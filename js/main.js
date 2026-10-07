@@ -8,7 +8,6 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", function () {
-    initTheme();
     initNavbar();
     initReveal();
     initCounters();
@@ -28,32 +27,7 @@
   setTimeout(hidePreloader, 3500); // fallback if an asset hangs
 
   /* ---------------------------------------------------------------
-     2. Dark / light theme — persisted via localStorage preference
-        (UI preference only; no sensitive data stored)
-  --------------------------------------------------------------- */
-  function initTheme() {
-    var saved = null;
-    try { saved = localStorage.getItem("endtech-theme"); } catch (e) { /* storage unavailable */ }
-    applyTheme(saved === "light" ? "light" : "dark");
-
-    document.querySelectorAll(".theme-toggle").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-        applyTheme(next);
-        try { localStorage.setItem("endtech-theme", next); } catch (e) { /* ignore */ }
-      });
-    });
-
-    function applyTheme(mode) {
-      document.documentElement.setAttribute("data-theme", mode);
-      document.querySelectorAll(".theme-toggle i").forEach(function (icon) {
-        icon.className = mode === "light" ? "bi bi-moon-stars" : "bi bi-sun";
-      });
-    }
-  }
-
-  /* ---------------------------------------------------------------
-     3. Sticky navbar state + auto-close mobile menu after selection
+     2. Sticky navbar state + auto-close mobile menu after selection
   --------------------------------------------------------------- */
   function initNavbar() {
     var nav = document.querySelector(".navbar-endtech");

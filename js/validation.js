@@ -1,119 +1,636 @@
-/* ==========================================================================
-   ENDTECH AI SOLUTIONS — validation.js
-   Contact form validation (client side). Only active on pages that
-   include #contactForm.
-   NOTE: Form submission must be wired to a SECURE BACKEND endpoint.
-   Never send credentials or API keys from the browser. See the
-   TODO placeholder in the submit handler below.
-   ========================================================================== */
-(function () {
-  "use strict";
+/*
+==========================================================================
+ENDTECH AI SOLUTIONS
+validation.js
 
-  document.addEventListener("DOMContentLoaded", function () {
-    var form = document.getElementById("contactForm");
+Contact form validation + EmailJS submission + Customer Auto Reply
+==========================================================================
+*/
+
+"use strict";
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const form = document.getElementById("contactForm");
+
+    // Stop if the contact form does not exist on this page
     if (!form) return;
 
-    var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    var PHONE_RE = /^\+?[0-9\s().\-]{7,18}$/;
-    var MIN_MESSAGE = 20;
+    /*EMAILJS CONFIGURATION*/
 
-    /* Field rules: [element, validator, errorElementId] */
-    var fields = [
-      {
-        el: document.getElementById("fullName"),
-        test: function (v) { return v.trim().length >= 2; },
-        msg: "Please enter your full name."
-      },
-      {
-        el: document.getElementById("email"),
-        test: function (v) { return EMAIL_RE.test(v.trim()); },
-        msg: "Please enter a valid email address."
-      },
-      {
-        el: document.getElementById("phone"),
-        test: function (v) { return PHONE_RE.test(v.trim()); },
-        msg: "Enter a valid phone number (7–18 digits, e.g. +254 700 000 000)."
-      },
-      {
-        el: document.getElementById("company"),
-        test: function () { return true; }, // optional field
-        msg: ""
-      },
-      {
-        el: document.getElementById("service"),
-        test: function (v) { return v !== ""; },
-        msg: "Please select the service you need."
-      },
-      {
-        el: document.getElementById("budget"),
-        test: function (v) { return v !== ""; },
-        msg: "Please select a budget range."
-      },
-      {
-        el: document.getElementById("message"),
-        test: function (v) { return v.trim().length >= MIN_MESSAGE; },
-        msg: "Please describe your project (at least " + MIN_MESSAGE + " characters)."
-      }
-    ];
+    const EMAILJS_PUBLIC_KEY = "iLZY9nKjxw8HCOE-9";
 
-    function validateField(field) {
-      var ok = field.test(field.el.value);
-      var feedback = field.el.parentElement.querySelector(".invalid-feedback");
-      field.el.classList.toggle("is-invalid", !ok);
-      field.el.classList.toggle("is-valid", ok && field.el.value.trim() !== "");
-      if (feedback && !ok) feedback.textContent = field.msg;
-      return ok;
+    const SERVICE_ID = "service_1b2nyny";
+
+  
+    const ADMIN_TEMPLATE_ID = "template_98rb4sb";
+
+  
+    const AUTO_REPLY_TEMPLATE_ID = "template_xar6t9h";
+
+
+    
+
+    if (typeof emailjs !== "undefined") {
+
+        emailjs.init({
+            publicKey: EMAILJS_PUBLIC_KEY
+        });
+
     }
 
-    // Validate on blur; re-validate live once a field has an error
-    fields.forEach(function (field) {
-      if (!field.el) return;
-      field.el.addEventListener("blur", function () { validateField(field); });
-      field.el.addEventListener("input", function () {
-        if (field.el.classList.contains("is-invalid")) validateField(field);
-      });
-      field.el.addEventListener("change", function () {
-        if (field.el.tagName === "SELECT") validateField(field);
-      });
-    });
 
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var allValid = true;
-      fields.forEach(function (field) {
-        if (field.el && !validateField(field)) allValid = false;
-      });
+    /*FORM ELEMENTS */
+   
 
-      if (!allValid) {
-        var firstError = form.querySelector(".is-invalid");
-        if (firstError) firstError.focus();
-        return;
-      }
+    const submitButton = form.querySelector(
+        'button[type="submit"]'
+    );
 
-      /* ---------------------------------------------------------------
-         TODO (backend integration): send the payload through a secure
-         server endpoint, e.g.:
-           fetch("/api/contact", {
-             method: "POST",
-             headers: { "Content-Type": "application/json" },
-             body: JSON.stringify(payload)
-           });
-         The backend should sanitize input, rate-limit requests, and
-         hold any API keys/secrets. Do NOT call third-party services
-         directly from this file.
-      --------------------------------------------------------------- */
-      var success = document.getElementById("formSuccess");
-      var name = document.getElementById("fullName").value.trim();
-      if (success) {
-        success.querySelector("strong").textContent =
-          "Thank you, " + name.split(" ")[0] + ".";
-        success.classList.add("show");
-        success.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      form.reset();
-      form.querySelectorAll(".is-valid, .is-invalid").forEach(function (el) {
-        el.classList.remove("is-valid", "is-invalid");
-      });
-    });
-  });
-})();
+    const successMessage = document.getElementById(
+        "formSuccess"
+    );
+
+    const errorMessage = document.getElementById(
+        "formError"
+    );
+
+
+    const fields = {
+
+        fullName: document.getElementById("fullName"),
+
+        email: document.getElementById("email"),
+
+        phone: document.getElementById("phone"),
+
+        company: document.getElementById("company"),
+
+        service: document.getElementById("service"),
+
+        budget: document.getElementById("budget"),
+
+        message: document.getElementById("message")
+
+    };
+
+
+    /*
+    ------------------------------------------------------------------------
+    VALIDATION RULES
+    ------------------------------------------------------------------------
+    */
+
+    const EMAIL_REGEX =
+        /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    const PHONE_REGEX =
+        /^\+?[0-9\s().-]{7,18}$/;
+
+    const MIN_MESSAGE_LENGTH = 20;
+
+
+    /*
+    ------------------------------------------------------------------------
+    VALIDATE INDIVIDUAL FIELD
+    ------------------------------------------------------------------------
+    */
+
+    function validateField(field, message) {
+
+        if (!field) return true;
+
+        const value = field.value.trim();
+
+        const feedback =
+            field.parentElement &&
+            field.parentElement.querySelector(
+                ".invalid-feedback"
+            );
+
+        let valid = true;
+
+
+        // Required field
+        if (
+            field.hasAttribute("required") &&
+            value === ""
+        ) {
+
+            valid = false;
+
+        }
+
+
+        // Email validation
+        if (
+            valid &&
+            field === fields.email &&
+            !EMAIL_REGEX.test(value)
+        ) {
+
+            valid = false;
+
+        }
+
+
+        // Phone validation
+        if (
+            valid &&
+            field === fields.phone &&
+            !PHONE_REGEX.test(value)
+        ) {
+
+            valid = false;
+
+        }
+
+
+        // Service and budget
+        if (
+            valid &&
+            (
+                field === fields.service ||
+                field === fields.budget
+            ) &&
+            value === ""
+        ) {
+
+            valid = false;
+
+        }
+
+
+        // Message length
+        if (
+            valid &&
+            field === fields.message &&
+            value.length < MIN_MESSAGE_LENGTH
+        ) {
+
+            valid = false;
+
+        }
+
+
+        // Update visual state
+        field.classList.toggle(
+            "is-invalid",
+            !valid
+        );
+
+        field.classList.toggle(
+            "is-valid",
+            valid && value !== ""
+        );
+
+
+        if (!valid && feedback) {
+
+            feedback.textContent = message;
+
+        }
+
+
+        return valid;
+
+    }
+
+
+    /*
+    ------------------------------------------------------------------------
+    VALIDATION MESSAGES
+    ------------------------------------------------------------------------
+    */
+
+    const validationMessages = {
+
+        fullName:
+            "Please enter your full name.",
+
+        email:
+            "Please enter a valid email address.",
+
+        phone:
+            "Enter a valid phone number, e.g. +254 700 000 000.",
+
+        service:
+            "Please select the service you need.",
+
+        budget:
+            "Please select a budget range.",
+
+        message:
+            "Please describe your project using at least " +
+            MIN_MESSAGE_LENGTH +
+            " characters."
+
+    };
+
+
+    /*
+    ------------------------------------------------------------------------
+    VALIDATE ALL FIELDS
+    ------------------------------------------------------------------------
+    */
+
+    function validateForm() {
+
+        let formIsValid = true;
+
+
+        Object.keys(validationMessages).forEach(
+            (fieldName) => {
+
+                const field =
+                    fields[fieldName];
+
+                const valid =
+                    validateField(
+                        field,
+                        validationMessages[fieldName]
+                    );
+
+                if (!valid) {
+
+                    formIsValid = false;
+
+                }
+
+            }
+        );
+
+
+        return formIsValid;
+
+    }
+
+
+    /*
+    ------------------------------------------------------------------------
+    LIVE VALIDATION
+    ------------------------------------------------------------------------
+    */
+
+    Object.keys(fields).forEach(
+        (fieldName) => {
+
+            const field =
+                fields[fieldName];
+
+            if (!field) return;
+
+
+            field.addEventListener(
+                "blur",
+                () => {
+
+                    if (
+                        validationMessages[fieldName]
+                    ) {
+
+                        validateField(
+                            field,
+                            validationMessages[fieldName]
+                        );
+
+                    }
+
+                }
+            );
+
+
+            field.addEventListener(
+                "input",
+                () => {
+
+                    if (
+                        field.classList.contains(
+                            "is-invalid"
+                        )
+                    ) {
+
+                        validateField(
+                            field,
+                            validationMessages[fieldName]
+                        );
+
+                    }
+
+                }
+            );
+
+
+            field.addEventListener(
+                "change",
+                () => {
+
+                    if (
+                        validationMessages[fieldName]
+                    ) {
+
+                        validateField(
+                            field,
+                            validationMessages[fieldName]
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+
+    /*
+    ------------------------------------------------------------------------
+    SHOW SUCCESS MESSAGE
+    ------------------------------------------------------------------------
+    */
+
+    function showSuccessMessage() {
+
+        if (!successMessage) return;
+
+
+        const firstName =
+            fields.fullName.value
+                .trim()
+                .split(" ")[0];
+
+
+        successMessage.innerHTML =
+            "<strong>Thank you, " +
+            firstName +
+            ".</strong> " +
+            "Your message has been sent successfully. " +
+            "An ENDTECH engineer will reach out shortly.";
+
+
+        if (errorMessage) {
+
+            errorMessage.hidden = true;
+
+            errorMessage.textContent = "";
+
+            errorMessage.classList.remove(
+                "show"
+            );
+
+        }
+
+
+        successMessage.style.display =
+            "block";
+
+        successMessage.classList.add(
+            "show"
+        );
+
+
+        successMessage.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+    }
+
+
+    /*
+    ------------------------------------------------------------------------
+    SHOW ERROR MESSAGE
+    ------------------------------------------------------------------------
+    */
+
+    function showErrorMessage(message) {
+
+        if (!errorMessage) return;
+
+
+        errorMessage.textContent =
+            message ||
+            "We couldn't send your message right now. Please try again or contact ENDTECH directly.";
+
+
+        errorMessage.hidden = false;
+
+        errorMessage.classList.add(
+            "show"
+        );
+
+
+        errorMessage.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+    }
+
+
+    /*
+    ------------------------------------------------------------------------
+    RESET FORM STYLES
+    ------------------------------------------------------------------------
+    */
+
+    function resetValidation() {
+
+        form.querySelectorAll(
+            ".is-valid, .is-invalid"
+        ).forEach(
+            (field) => {
+
+                field.classList.remove(
+                    "is-valid",
+                    "is-invalid"
+                );
+
+            }
+        );
+
+    }
+
+
+    /*
+    ------------------------------------------------------------------------
+    SET SUBMIT BUTTON STATE
+    ------------------------------------------------------------------------
+    */
+
+    function setSendingState(isSending) {
+
+        if (!submitButton) return;
+
+
+        submitButton.disabled =
+            isSending;
+
+
+        submitButton.innerHTML =
+            isSending
+                ? `
+                    Sending...
+                    <i class="bi bi-arrow-repeat"></i>
+                  `
+                : `
+                    Send Message
+                    <i class="bi bi-send"></i>
+                  `;
+
+    }
+
+
+    /*
+    ------------------------------------------------------------------------
+    FORM SUBMISSION
+    ------------------------------------------------------------------------
+    */
+
+    form.addEventListener(
+        "submit",
+        async (event) => {
+
+            event.preventDefault();
+
+
+            /*
+            Validate form
+            */
+
+            if (!validateForm()) {
+
+                const firstError =
+                    form.querySelector(
+                        ".is-invalid"
+                    );
+
+
+                if (firstError) {
+
+                    firstError.focus();
+
+                }
+
+
+                return;
+
+            }
+
+
+            setSendingState(true);
+
+
+            try {
+
+                /*
+                ------------------------------------------------------------
+                CHECK EMAILJS
+                ------------------------------------------------------------
+                */
+
+                if (
+                    typeof emailjs === "undefined"
+                ) {
+
+                    throw new Error(
+                        "EmailJS is not loaded."
+                    );
+
+                }
+
+
+                /*
+                ------------------------------------------------------------
+                CHECK AUTO-REPLY TEMPLATE
+                ------------------------------------------------------------
+                */
+
+                if (
+                    AUTO_REPLY_TEMPLATE_ID ===
+                    "PASTE_AUTO_REPLY_TEMPLATE_ID_HERE"
+                ) {
+
+                    throw new Error(
+                        "Auto-reply template ID has not been added."
+                    );
+
+                }
+
+
+                /*
+                ------------------------------------------------------------
+                SEND BOTH EMAILS
+                ------------------------------------------------------------
+
+                1. ENDTECH receives the inquiry
+                2. Customer receives automatic confirmation
+                */
+
+                await Promise.all([
+
+                    emailjs.sendForm(
+                        SERVICE_ID,
+                        ADMIN_TEMPLATE_ID,
+                        form
+                    ),
+
+                    emailjs.sendForm(
+                        SERVICE_ID,
+                        AUTO_REPLY_TEMPLATE_ID,
+                        form
+                    )
+
+                ]);
+
+
+                /*
+                ------------------------------------------------------------
+                SUCCESS
+                ------------------------------------------------------------
+                */
+
+                console.log(
+                    "Inquiry and auto-reply sent successfully."
+                );
+
+
+                showSuccessMessage();
+
+
+                /*
+                Reset form
+                */
+
+                form.reset();
+
+                resetValidation();
+
+            }
+
+
+            catch (error) {
+
+                console.error(
+                    "EmailJS error:",
+                    error
+                );
+
+
+                showErrorMessage(
+                    "We couldn't send your message right now. Please try again or contact ENDTECH directly."
+                );
+
+            }
+
+
+            finally {
+
+                setSendingState(false);
+
+            }
+
+        }
+    );
+
+});
